@@ -1,8 +1,5 @@
-# app.py — IPL Points Table (clean UI + clickable team search)
-# Place this file in the same folder as: ipl_points_table.csv
-
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from urllib.parse import quote_plus
 
 # ----------------------------
@@ -15,133 +12,226 @@ st.set_page_config(
 )
 
 # ----------------------------
-# Minimal styling
+# Styling (table + UI)
 # ----------------------------
 st.markdown(
     """
     <style>
-      .block-container {padding-top: 2rem; padding-bottom: 2rem;}
-      h1 {margin-bottom: .25rem;}
-      .subtle {opacity: .75; margin-top: 0;}
-      /* Make dataframe look nicer */
-      [data-testid="stDataFrame"] {border-radius: 14px; overflow: hidden;}
+      /* Make the page breathe */
+      .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+
+      /* Title */
+      .title-wrap h1 { margin-bottom: 0.2rem; }
+      .subtitle { opacity: 0.75; margin-top: 0.2rem; }
+
+      /* KPI cards */
+      .kpi-row { display: flex; gap: 16px; margin: 14px 0 18px 0; }
+      .kpi {
+        flex: 1;
+        padding: 18px 18px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      }
+      .kpi-label { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
+      .kpi-value { font-size: 30px; font-weight: 700; }
+
+      /* Table container */
+      .table-wrap {
+        border-radius: 18px;
+        padding: 14px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.10);
+        overflow-x: auto;
+      }
+
+      /* Table styling */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      thead th {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.15);
+        opacity: 0.85;
+        white-space: nowrap;
+      }
+      tbody td {
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        white-space: nowrap;
+      }
+      tbody tr:hover {
+        background: rgba(255,255,255,0.06);
+      }
+
+      /* Team links */
+      a.team-link {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a.team-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Rank left-align (explicit) */
+      td.col-rank, th.col-rank { text-align: left !important; width: 60px; }
+
+      /* Points centre-align */
+      td.col-pts, th.col-pts { text-align: center !important; width: 80px; }
+
+      /* Number columns slightly right */
+      td.num { text-align: right; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ----------------------------
-# Helpers
+# Data loading
 # ----------------------------
-def google_search_url(team_name: str) -> str:
-    return f"https://www.google.com/search?q={quote_plus(team_name + ' IPL team')}"
-
 @st.cache_data
 def load_points_table(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
-    # Basic clean-ups / type safety
-    if "season" in df.columns:
-        df["season"] = df["season"].astype(str)
+    # Clean column names if needed
+    df.columns = [c.strip() for c in df.columns]
     return df
 
-# ----------------------------
-# Load data
-# ----------------------------
+# Change this if your file name differs
 DATA_FILE = "ipl_points_table.csv"
 
 try:
-    pt = load_points_table(DATA_FILE)
-except FileNotFoundError:
-    st.error(f"File not found: {DATA_FILE}\n\nKeep **app.py** and **{DATA_FILE}** in the same folder.")
-    st.stop()
-
-required_cols = {"season", "team", "matches_played", "wins", "losses", "no_result", "points", "win_pct"}
-missing = required_cols - set(pt.columns)
-if missing:
-    st.error(f"Your CSV is missing required columns: {sorted(missing)}")
+    df_all = load_points_table(DATA_FILE)
+except Exception as e:
+    st.error(f"Could not read {DATA_FILE}. Make sure it is in the same folder as app.py.\n\nError: {e}")
     st.stop()
 
 # ----------------------------
 # Header
 # ----------------------------
-st.title("🏏 IPL Points Table")
-st.markdown('<p class="subtle">Pick a season. Use the Search column to open Google results for a team.</p>', unsafe_allow_html=True)
+st.markdown('<div class="title-wrap"><h1>🏏 IPL Points Table</h1></div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Pick a season. Click a team name to open a Google search in a new tab.</div>', unsafe_allow_html=True)
 
 # ----------------------------
 # Season selector
 # ----------------------------
-seasons = sorted(pt["season"].unique(), reverse=True)
-default_season = seasons[0] if seasons else None
+if "season" not in df_all.columns:
+    st.error("Your CSV must have a 'season' column.")
+    st.stop()
 
-season = st.selectbox("Season", seasons, index=0)
+seasons = list(pd.Series(df_all["season"].dropna().unique()).sort_values())
+season = st.selectbox("Season", seasons, index=len(seasons) - 1)
 
-# Filter season
-pt_season = pt[pt["season"] == season].copy()
-
-# Sort (points desc, win_pct desc)
-pt_season = pt_season.sort_values(["points", "win_pct"], ascending=[False, False]).reset_index(drop=True)
-pt_season.insert(0, "rank", pt_season.index + 1)
-
-# Create team search link
-pt_season["team_search_link"] = pt_season["team"].apply(google_search_url)
+df_season = df_all[df_all["season"] == season].copy()
 
 # ----------------------------
-# Quick stats cards
+# Basic validation for expected columns
 # ----------------------------
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.metric("Teams", int(pt_season["team"].nunique()))
-with c2:
-    st.metric("Max Points", int(pt_season["points"].max()) if len(pt_season) else 0)
-with c3:
-    top_win = float(pt_season["win_pct"].max()) if len(pt_season) else 0.0
-    st.metric("Top Win %", f"{top_win:.1f}")
+required = {"team", "matches_played", "wins", "losses", "no_result", "points", "win_pct"}
+missing = required - set(df_season.columns)
+if missing:
+    st.error(f"Missing columns in your CSV for this app: {sorted(list(missing))}")
+    st.stop()
 
-st.divider()
+# Ensure a clean rank based on current ordering (or sort if you prefer)
+# If your CSV is already correctly sorted, keep as-is.
+# Otherwise you can uncomment sorting below:
+# df_season = df_season.sort_values(["points", "win_pct"], ascending=[False, False]).reset_index(drop=True)
 
-# ----------------------------
-# Display table (clean clickable link)
-# ----------------------------
-st.subheader(f"Points Table for {season}")
+df_season = df_season.reset_index(drop=True)
+df_season["rank"] = df_season.index + 1
 
-cols_to_show = ["rank", "team", "matches_played", "wins", "losses", "no_result", "points", "win_pct", "team_search_link"]
-display_df = pt_season[cols_to_show].copy()
+# KPIs
+teams_count = df_season["team"].nunique()
+max_points = int(df_season["points"].max())
+top_win = float(df_season["win_pct"].max())
+top_win_str = f"{top_win:.1f}"
 
-# Round win %
-display_df["win_pct"] = display_df["win_pct"].round(1)
-
-# Rename columns to match IPL style a bit
-display_df = display_df.rename(
-    columns={
-        "rank": "Rank",
-        "team": "Team",
-        "matches_played": "P",
-        "wins": "W",
-        "losses": "L",
-        "no_result": "NR",
-        "points": "Pts",
-        "win_pct": "Win %",
-        "team_search_link": "Search",
-    }
+st.markdown(
+    f"""
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Teams</div>
+        <div class="kpi-value">{teams_count}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Max Points</div>
+        <div class="kpi-value">{max_points}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Top Win %</div>
+        <div class="kpi-value">{top_win_str}</div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-st.dataframe(
-    display_df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Rank": st.column_config.NumberColumn("Rank"),
-        "Team": st.column_config.TextColumn("Team"),
-        "P": st.column_config.NumberColumn("P"),
-        "W": st.column_config.NumberColumn("W"),
-        "L": st.column_config.NumberColumn("L"),
-        "NR": st.column_config.NumberColumn("NR"),
-        "Pts": st.column_config.NumberColumn("Pts"),
-        "Win %": st.column_config.NumberColumn("Win %"),
-        "Search": st.column_config.LinkColumn(
-            "Search",
-            display_text="Open",  # hides the ugly URL
-            help="Open Google search in a new tab",
-        ),
-    },
-)
+# ----------------------------
+# Build clickable Team (NO extra column)
+# ----------------------------
+def team_anchor(team: str) -> str:
+    q = quote_plus(f"{team} IPL team")
+    url = f"https://www.google.com/search?q={q}"
+    return f'<a class="team-link" href="{url}" target="_blank" rel="noopener noreferrer">{team}</a>'
+
+df_display = pd.DataFrame({
+    "Rank": df_season["rank"],
+    "Team": df_season["team"].astype(str).apply(team_anchor),
+    "P": df_season["matches_played"],
+    "W": df_season["wins"],
+    "L": df_season["losses"],
+    "NR": df_season["no_result"],
+    "Pts": df_season["points"],
+    "Win %": df_season["win_pct"].round(1),
+})
+
+# Convert to HTML and inject per-column classes for alignment control
+html_table = df_display.to_html(index=False, escape=False)
+
+# Add classes to Rank and Pts columns (both header + cells)
+# This is a simple string replace approach for stable column order.
+html_table = html_table.replace("<th>Rank</th>", '<th class="col-rank">Rank</th>')
+html_table = html_table.replace("<th>Pts</th>", '<th class="col-pts">Pts</th>')
+
+# Add classes to first column (Rank) and Pts column by targeting <td> positions
+# Rank is col 1, Pts is col 7 in our df_display
+def add_td_classes(table_html: str) -> str:
+    out = []
+    in_row = False
+    td_index = 0
+    for part in table_html.split("<td"):
+        if not in_row:
+            # before the first <td of the document
+            out.append(part)
+            in_row = True
+            continue
+        # Each split chunk starts at after "<td"
+        # We need to know which td number we are in within a row. Reset after </tr>.
+        chunk = "<td" + part
+        # Reset on new row boundary
+        if "</tr>" in out[-1]:
+            td_index = 0
+
+        td_index += 1
+        if td_index == 1:
+            chunk = chunk.replace("<td>", '<td class="col-rank">', 1)
+        elif td_index == 7:
+            chunk = chunk.replace("<td>", '<td class="col-pts">', 1)
+        else:
+            # numeric columns (P,W,L,NR,Win%) right align for readability
+            # Team stays default because it's a link
+            if td_index in (3,4,5,6,8):
+                chunk = chunk.replace("<td>", '<td class="num">', 1)
+
+        out.append(chunk)
+    return "".join(out)
+
+html_table = add_td_classes(html_table)
+
+st.markdown(f"<h2>Points Table for {season}</h2>", unsafe_allow_html=True)
+st.markdown(f'<div class="table-wrap">{html_table}</div>', unsafe_allow_html=True)
