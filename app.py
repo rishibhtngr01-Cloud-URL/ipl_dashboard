@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 # ----------------------------
 st.set_page_config(
     page_title="IPL Points Table",
-    page_icon="🤾",
+    page_icon="🏏",
     layout="wide",
 )
 
@@ -82,7 +82,7 @@ st.markdown(
       td.col-rank, th.col-rank { text-align: left !important; width: 60px; }
       
       /* Team left-align (explicit) */
-      td.col-rank, th.col-rank { text-align: left }
+      td.col-rank, th.col-rank { text-align: left ! }
 
       /* Points centre-align */
       td.col-pts, th.col-pts { text-align: center !important; width: 80px; }
