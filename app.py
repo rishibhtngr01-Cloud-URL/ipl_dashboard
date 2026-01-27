@@ -80,6 +80,9 @@ st.markdown(
 
       /* Rank left-align (explicit) */
       td.col-rank, th.col-rank { text-align: left !important; width: 60px; }
+      
+      /* Team left-align (explicit) */
+      td.col-rank, th.col-rank { text-align: left !important;}
 
       /* Points centre-align */
       td.col-pts, th.col-pts { text-align: center !important; width: 80px; }
