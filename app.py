@@ -82,7 +82,7 @@ st.markdown(
       td.col-rank, th.col-rank { text-align: left !important; width: 60px; }
       
       /* Team left-align (explicit) */
-      td.col-team, th.col-team { text-align: left !important; width: 360px; } ! }
+      td.col-team, th.col-team { text-align: left !important; width: 360px; }
 
       /* Points centre-align */
       td.col-pts, th.col-pts { text-align: center !important; width: 80px; }
@@ -199,6 +199,7 @@ html_table = df_display.to_html(index=False, escape=False)
 # Add classes to Rank and Pts columns (both header + cells)
 # This is a simple string replace approach for stable column order.
 html_table = html_table.replace("<th>Rank</th>", '<th class="col-rank">Rank</th>')
+html_table = html_table.replace("<th>Team</th>", '<th class="col-team">Team</th>')
 html_table = html_table.replace("<th>Pts</th>", '<th class="col-pts">Pts</th>')
 
 # Add classes to first column (Rank) and Pts column by targeting <td> positions
