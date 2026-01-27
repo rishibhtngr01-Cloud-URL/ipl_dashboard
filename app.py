@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 # ----------------------------
 st.set_page_config(
     page_title="IPL Points Table",
-    page_icon="🏏🤾",
+    page_icon="🤾",
     layout="wide",
 )
 
