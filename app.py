@@ -200,7 +200,6 @@ df_display = pd.DataFrame({
     "P": df_season["matches_played"],
     "W": df_season["wins"],
     "L": df_season["losses"],
-    "NR": df_season["no_result"],
     "Pts": df_season["points"],
     "Win %": df_season["win_pct"].round(1),
 })
@@ -236,12 +235,12 @@ def add_td_classes(table_html: str) -> str:
         td_index += 1
         if td_index == 1:
             chunk = chunk.replace("<td>", '<td class="col-rank">', 1)
-        elif td_index == 7:
+        elif td_index == 6:
             chunk = chunk.replace("<td>", '<td class="col-pts">', 1)
         else:
             # numeric columns (P,W,L,NR,Win%) right align for readability
             # Team stays default because it's a link
-            if td_index in (3,4,5,6,8):
+            if td_index in (3,4,5,7):
                 chunk = chunk.replace("<td>", '<td class="num">', 1)
 
         out.append(chunk)
