@@ -90,7 +90,7 @@ st.markdown(
       /* Number columns slightly right */
       td.num { text-align: right; }
       
-      /* Center align P, W, L, NR columns */
+      /* Center align P, W, L, Pts columns */
 table td:nth-child(3),
 table th:nth-child(3),
 table td:nth-child(4),
@@ -100,7 +100,7 @@ table th:nth-child(5),
 table td:nth-child(6),
 table th:nth-child(6) {
     text-align: center !important;
-    
+}
     </style>
     """,
     unsafe_allow_html=True,
